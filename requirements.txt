@@ -1,0 +1,29 @@
+# Web framework
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+
+# Database
+sqlalchemy==2.0.36
+aiosqlite==0.20.0
+
+# Validation & settings
+pydantic==2.11.4
+pydantic-settings==2.11.0
+
+# File upload
+python-multipart==0.0.20
+
+# HTTP client (GDELT polling)
+httpx==0.28.1
+
+# Testing
+pytest==8.3.5
+pytest-asyncio==0.24.0
+anyio==4.7.0
+
+# WebSocket support
+websockets==15.0.1
+
+# Optional: AI extraction (uncomment whichever you use)
+# anthropic==0.40.0
+# openai==1.55.0

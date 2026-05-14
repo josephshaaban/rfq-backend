@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WebSocket Test Page</title>
+    <style>
+      body {
+        font-family: Georgia, serif;
+        margin: 2rem;
+        background: #f4f0e8;
+        color: #1f2933;
+      }
+
+      h1 {
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        max-width: 54rem;
+      }
+
+      .row {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin: 1rem 0;
+      }
+
+      input,
+      button {
+        font: inherit;
+        padding: 0.75rem;
+      }
+
+      input {
+        flex: 1 1 28rem;
+        border: 1px solid #8a817c;
+        background: #fffdf8;
+      }
+
+      button {
+        border: 1px solid #1f2933;
+        background: #1f2933;
+        color: #fffdf8;
+        cursor: pointer;
+      }
+
+      pre {
+        min-height: 18rem;
+        padding: 1rem;
+        border: 1px solid #8a817c;
+        background: #fffdf8;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>WebSocket Test Page</h1>
+    <p>
+      Optional helper for local validation. The candidate may use this, adapt it,
+      or create a different test harness.
+    </p>
+    <div class="row">
+      <input id="url" value="ws://localhost:8000/ws" aria-label="WebSocket URL">
+      <button id="connect" type="button">Connect</button>
+      <button id="disconnect" type="button">Disconnect</button>
+    </div>
+    <div class="row">
+      <input id="message" placeholder="Type a message to send" aria-label="Message to send">
+      <button id="send" type="button">Send</button>
+    </div>
+    <pre id="log"></pre>
+    <script>
+      const logElement = document.getElementById("log");
+      const urlElement = document.getElementById("url");
+      const messageElement = document.getElementById("message");
+      let socket = null;
+
+      function log(message) {
+        const timestamp = new Date().toISOString();
+        logElement.textContent += `[${timestamp}] ${message}\n`;
+        logElement.scrollTop = logElement.scrollHeight;
+      }
+
+      document.getElementById("connect").addEventListener("click", () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          log("Already connected.");
+          return;
+        }
+        socket = new WebSocket(urlElement.value);
+        socket.addEventListener("open", () => log("Connected."));
+        socket.addEventListener("message", (event) => log(`Received: ${event.data}`));
+        socket.addEventListener("close", () => log("Disconnected."));
+        socket.addEventListener("error", () => log("WebSocket error."));
+      });
+
+      document.getElementById("disconnect").addEventListener("click", () => {
+        if (!socket) {
+          log("No active socket.");
+          return;
+        }
+        socket.close();
+      });
+
+      document.getElementById("send").addEventListener("click", () => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          log("Cannot send. Socket is not open.");
+          return;
+        }
+        socket.send(messageElement.value);
+        log(`Sent: ${messageElement.value}`);
+      });
+    </script>
+  </body>
+</html>

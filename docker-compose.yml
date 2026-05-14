@@ -1,0 +1,21 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data          # SQLite persists here on the host
+      - ./assets:/app/assets:ro   # read-only asset access
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    restart: unless-stopped
+
+# Trade-off note: SQLite lives inside the api container's mounted ./data volume.
+# This is appropriate for a single-instance local setup. In production, replace
+# with RDS Aurora PostgreSQL and remove the volume mount.
