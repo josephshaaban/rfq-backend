@@ -10,7 +10,6 @@ The fallback chain is: configured model → rule_based.
 """
 import re
 import json
-import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,11 +20,10 @@ from app.db.repositories.document_repo import (
     bulk_insert_entities,
     update_document_status,
 )
-from app.settings import get_settings
+from app.settings import Settings, get_settings
 from app.logger import get_logger
 
 logger = get_logger(__name__)
-settings = get_settings()
 
 # ---------------------------------------------------------------------------
 # Entity patterns for rule-based extraction
@@ -52,17 +50,18 @@ RFQ_SEED_KEYWORDS = [
 
 
 class ExtractionService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, settings: Settings | None = None) -> None:
         self._session = session
+        self._settings = settings or get_settings()
 
     async def extract_and_persist(self, document_id: str, raw_text: str) -> tuple[int, int]:
         """Returns (keyword_count, entity_count)."""
-        model = settings.extraction_model
+        model = self._settings.extraction_model
 
         try:
-            if model == "anthropic" and settings.anthropic_api_key:
+            if model == "anthropic" and self._settings.anthropic_api_key:
                 keywords, entities = await self._extract_with_anthropic(raw_text)
-            elif model == "openai" and settings.openai_api_key:
+            elif model == "openai" and self._settings.openai_api_key:
                 keywords, entities = await self._extract_with_openai(raw_text)
             else:
                 if model != "rule_based":
@@ -145,7 +144,7 @@ class ExtractionService:
     async def _extract_with_anthropic(self, text: str) -> tuple[list[dict], list[dict]]:
         import anthropic  # type: ignore
 
-        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        client = anthropic.AsyncAnthropic(api_key=self._settings.anthropic_api_key)
         prompt = self._build_extraction_prompt(text)
         message = await client.messages.create(
             model="claude-3-haiku-20240307",
@@ -161,7 +160,7 @@ class ExtractionService:
     async def _extract_with_openai(self, text: str) -> tuple[list[dict], list[dict]]:
         import openai  # type: ignore
 
-        client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+        client = openai.AsyncOpenAI(api_key=self._settings.openai_api_key)
         prompt = self._build_extraction_prompt(text)
         response = await client.chat.completions.create(
             model="gpt-4o-mini",
@@ -171,6 +170,9 @@ class ExtractionService:
         raw = response.choices[0].message.content or "{}"
         return self._parse_llm_response(raw)
 
+    # ------------------------------------------------------------------
+    # LLM response handling
+    # ------------------------------------------------------------------
     def _build_extraction_prompt(self, text: str) -> str:
         return f"""You are a manufacturing document parser. Extract structured data from this RFQ document.
 
