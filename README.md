@@ -238,6 +238,11 @@ rfq_backend/
 | asyncio background poll | EventBridge Scheduler → Lambda or ECS task |
 | Local file upload | API Gateway + S3 pre-signed URLs |
 | stdout logs | CloudWatch Logs + Log Insights |
+| Document upload at scale | API Gateway + S3 pre-signed URL (POST directly to S3; API tier never touches file bytes at scale) |
+| Extraction durability | SQS FIFO queue between upload and extraction worker (BackgroundTasks is in-process and lost on crash) |
+| WebSocket at scale | ALB with sticky sessions (stickiness_type=lb_cookie) required if >1 Fargate task; without it, broadcast misses clients on other instances |
+| API secrets | AWS Secrets Manager → ECS task definition secretsFrom; never pass ANTHROPIC_API_KEY as a plain env var in production |
+| GDELT polling schedule | ECS Scheduled Tasks via EventBridge (not Lambda — Lambda 15-min timeout is too short for a sustained poll loop with DB writes) |
 
 ---
 
