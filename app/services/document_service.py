@@ -2,7 +2,7 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import BackgroundTasks, HTTPException, UploadFile
+from fastapi import BackgroundTasks, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document
@@ -10,7 +10,12 @@ from app.db.repositories import document_repo
 from app.db.session import get_session_factory
 from app.services.extraction_service import ExtractionService
 from app.api.v1.ws.connection_manager import manager
-from app.exceptions import DocumentTooLargeError, DocumentTypeNotSupportedError
+from app.exceptions import (
+    DocumentConflictError,
+    DocumentEmptyError,
+    DocumentTooLargeError,
+    DocumentTypeNotSupportedError,
+)
 from app.logger import get_logger
 
 logger = get_logger(__name__)
@@ -30,26 +35,15 @@ class DocumentService:
         if file.content_type not in _ACCEPTED_MIME_TYPES:
             raise DocumentTypeNotSupportedError(content_type=file.content_type or "unknown")
         if not raw_bytes:
-            raise HTTPException(
-                status_code=422,
-                detail={"detail": "Uploaded file is empty", "type": "validation_error"},
-            )
+            raise DocumentEmptyError()
 
         sha256 = hashlib.sha256(raw_bytes).hexdigest()
+        document_id = str(uuid.uuid4())
 
         # Idempotency: return existing document if same content already ingested
         existing = await document_repo.get_document_by_sha256(self._session, sha256)
         if existing:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "detail": "Document with identical content already exists",
-                    "type": "conflict",
-                    "existing_id": existing.id,
-                },
-            )
-
-        document_id = str(uuid.uuid4())
+            raise DocumentConflictError(document_id, existing.id)
         raw_text = raw_bytes.decode("utf-8", errors="replace")
         doc = Document(
             id=document_id,

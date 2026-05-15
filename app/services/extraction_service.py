@@ -43,6 +43,8 @@ ENTITY_PATTERNS: list[tuple[str, str]] = [
 ]
 
 # Keywords of interest extracted verbatim from the RFQ document hint
+VALID_ENTITY_TYPES: frozenset[str] = frozenset(ep[0] for ep in ENTITY_PATTERNS) | {"unit"}
+
 RFQ_SEED_KEYWORDS = [
     "stainless steel", "cnc", "tolerance", "316l", "certificate",
     "bremen", "ddp", "conveyor", "retrofit", "lead time",

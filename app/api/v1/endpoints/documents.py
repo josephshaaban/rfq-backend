@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
@@ -11,7 +11,9 @@ from app.api.v1.models.document_models import (
     KeywordResponse,
     EntityResponse,
 )
+from app.exceptions import DocumentNotFoundError, InvalidEntityTypeError
 from app.services.document_service import DocumentService
+from app.services.extraction_service import VALID_ENTITY_TYPES
 
 router = APIRouter()
 
@@ -27,12 +29,6 @@ async def upload_document(
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
 ):
-    if not file.filename:
-        raise HTTPException(
-            status_code=422,
-            detail={"detail": "Filename is required", "type": "validation_error"},
-        )
-
     service = DocumentService(session)
     document_id = await service.ingest(file, background_tasks)
     return DocumentUploadResponse(
@@ -53,7 +49,7 @@ async def get_document(
 ):
     doc = await document_repo.get_document_by_id(session, document_id)
     if not doc:
-        raise HTTPException(status_code=404, detail={"detail": "Document not found", "type": "not_found"})
+        raise DocumentNotFoundError(document_id)
     return DocumentResponse.model_validate(doc)
 
 
@@ -68,7 +64,7 @@ async def get_keywords(
 ):
     doc = await document_repo.get_document_by_id(session, document_id)
     if not doc:
-        raise HTTPException(status_code=404, detail={"detail": "Document not found", "type": "not_found"})
+        raise DocumentNotFoundError(document_id)
 
     keywords = await document_repo.get_keywords_for_document(session, document_id)
     return KeywordsListResponse(
@@ -90,7 +86,10 @@ async def get_entities(
 ):
     doc = await document_repo.get_document_by_id(session, document_id)
     if not doc:
-        raise HTTPException(status_code=404, detail={"detail": "Document not found", "type": "not_found"})
+        raise DocumentNotFoundError(document_id)
+
+    if entity_type is not None and entity_type not in VALID_ENTITY_TYPES:
+        raise InvalidEntityTypeError(entity_type, sorted(VALID_ENTITY_TYPES))
 
     entities = await document_repo.get_entities_for_document(session, document_id, entity_type)
     return EntitiesListResponse(
