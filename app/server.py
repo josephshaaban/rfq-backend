@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+from app.exceptions import DocumentTooLargeError, DocumentTypeNotSupportedError
 
 from app.logger import configure_logging, get_logger
 from app.settings import get_settings
@@ -56,12 +58,27 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Set CORS_ORIGINS env var (comma-separated) before any shared deployment.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_origins,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(DocumentTooLargeError)
+    async def document_too_large_handler(request: Request, exc: DocumentTooLargeError) -> JSONResponse:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"File exceeds maximum size of {exc.max_mb} MB", "type": "payload_too_large"},
+        )
+
+    @app.exception_handler(DocumentTypeNotSupportedError)
+    async def document_type_not_supported_handler(request: Request, exc: DocumentTypeNotSupportedError) -> JSONResponse:
+        return JSONResponse(
+            status_code=415,
+            content={"detail": f"Content type '{exc.content_type}' is not supported", "type": "unsupported_media_type"},
+        )
 
     # REST routes
     app.include_router(health.router, tags=["health"])

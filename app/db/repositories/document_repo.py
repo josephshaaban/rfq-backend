@@ -1,6 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.models import Document, ExtractedKeyword, ExtractedEntity
+from app.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 async def create_document(session: AsyncSession, document: Document) -> Document:
@@ -32,6 +35,8 @@ async def update_document_status(
         if processed_at:
             doc.processed_at = processed_at
         await session.flush()
+    else:
+        logger.warning("Document not found for status update", extra={"document_id": document_id})
 
 
 async def bulk_insert_keywords(

@@ -10,9 +10,13 @@ from app.db.repositories import document_repo
 from app.db.session import get_session_factory
 from app.services.extraction_service import ExtractionService
 from app.api.v1.ws.connection_manager import manager
+from app.exceptions import DocumentTooLargeError, DocumentTypeNotSupportedError
 from app.logger import get_logger
 
 logger = get_logger(__name__)
+
+_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+_ACCEPTED_MIME_TYPES = {"text/plain", "application/pdf", "application/octet-stream"}
 
 
 class DocumentService:
@@ -21,6 +25,10 @@ class DocumentService:
 
     async def ingest(self, file: UploadFile, background_tasks: BackgroundTasks) -> str:
         raw_bytes = await file.read()
+        if len(raw_bytes) > _MAX_BYTES:
+            raise DocumentTooLargeError(max_mb=10)
+        if file.content_type not in _ACCEPTED_MIME_TYPES:
+            raise DocumentTypeNotSupportedError(content_type=file.content_type or "unknown")
         if not raw_bytes:
             raise HTTPException(
                 status_code=422,
