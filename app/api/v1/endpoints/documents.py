@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.db.repositories import document_repo
+from app.db.repositories.document_repo import log_document_read
 from app.api.v1.models.document_models import (
     DocumentResponse,
     DocumentUploadResponse,
@@ -50,6 +51,7 @@ async def get_document(
     doc = await document_repo.get_document_by_id(session, document_id)
     if not doc:
         raise DocumentNotFoundError(document_id)
+    await log_document_read(session, document_id)
     return DocumentResponse.model_validate(doc)
 
 

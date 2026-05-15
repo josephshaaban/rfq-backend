@@ -12,6 +12,7 @@ class DocumentResponse(BaseModel):
     processing_status: Literal["pending", "processed", "failed"]
     created_at: str
     processed_at: str | None
+    retention_days: int | None = None
 
     model_config = {"from_attributes": True}
 

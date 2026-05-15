@@ -39,6 +39,10 @@ async def update_document_status(
         logger.warning("Document not found for status update", extra={"document_id": document_id})
 
 
+async def log_document_read(session: AsyncSession, document_id: str, read_by: str = "api") -> None:
+    logger.info("Document read", extra={"document_id": document_id, "read_by": read_by, "event": "document_read"})
+
+
 async def bulk_insert_keywords(
     session: AsyncSession, keywords: list[ExtractedKeyword]
 ) -> None:

@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS documents (
         processing_status IN ('pending', 'processed', 'failed')
     ),
     created_at TEXT NOT NULL,
-    processed_at TEXT
+    processed_at TEXT,
+    retention_days INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS extracted_keywords (

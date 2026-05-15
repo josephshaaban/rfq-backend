@@ -33,6 +33,8 @@ class Document(Base):
     )
     created_at: Mapped[str] = mapped_column(Text, nullable=False, default=_now_iso)
     processed_at: Mapped[str | None] = mapped_column(Text)
+    # Set via org policy; a background job should hard-delete rows where created_at < now() - retention_days
+    retention_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     __table_args__ = (
         CheckConstraint(

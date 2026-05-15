@@ -246,3 +246,6 @@ rfq_backend/
 - Documents contain potentially confidential RFQ data. In production: encrypt at rest (RDS encryption, S3 SSE), enforce TLS in transit, apply row-level access control per tenant.
 - GDELT articles are public news — no PII concern. Article URLs and titles only are stored; full article text is not persisted.
 - No secrets are committed to source control. `.env` is in `.gitignore`; `sample.env` contains only safe defaults.
+- **Authentication:** No authentication is implemented in this build. Before any shared deployment — including internal staging — add OAuth2/JWT middleware or API key validation. Every endpoint currently returns data to any caller.
+- **Retention:** The `retention_days` field on `Document` supports per-document TTL. A scheduled job (EventBridge + Lambda or pg_cron in prod) should purge rows where `created_at < NOW() - INTERVAL retention_days DAY`.
+- **Audit:** Document reads are logged as structured events (`event=document_read`) to stdout. In production, ship these to CloudTrail or a SIEM.
