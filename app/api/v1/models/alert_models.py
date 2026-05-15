@@ -33,7 +33,19 @@ class PollRunResponse(BaseModel):
 
 class AlertsListResponse(BaseModel):
     count: int
+    total_count: int
+    limit: int
+    offset: int
+    has_more: bool
     alerts: list[AlertEventResponse]
+
+
+class PollRunsListResponse(BaseModel):
+    runs: list[PollRunResponse]
+    total_count: int
+    limit: int
+    offset: int
+    has_more: bool
 
 
 class MonitorTriggerResponse(BaseModel):

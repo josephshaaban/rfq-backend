@@ -108,9 +108,15 @@ async def test_list_alerts(client: AsyncClient):
     data = response.json()
     assert "alerts" in data
     assert isinstance(data["alerts"], list)
+    assert "total_count" in data
+    assert data["total_count"] >= 0
 
 
 async def test_list_poll_runs(client: AsyncClient):
     response = await client.get("/api/v1/monitor/runs")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    data = response.json()
+    assert "runs" in data
+    assert isinstance(data["runs"], list)
+    assert "total_count" in data
+    assert data["total_count"] >= 0

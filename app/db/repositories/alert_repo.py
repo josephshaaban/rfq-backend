@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from app.db.models import AlertEvent, PollRun
 from app.logger import get_logger
@@ -61,16 +61,24 @@ async def list_alert_events(
     limit: int = 50,
     offset: int = 0,
     status: str | None = None,
-) -> list[AlertEvent]:
+) -> tuple[list[AlertEvent], int]:
+    count_q = select(func.count()).select_from(AlertEvent)
+    if status:
+        count_q = count_q.where(AlertEvent.alert_status == status)
+    total = (await session.execute(count_q)).scalar_one()
+
     q = select(AlertEvent).order_by(AlertEvent.detected_at.desc()).limit(limit).offset(offset)
     if status:
         q = q.where(AlertEvent.alert_status == status)
     result = await session.execute(q)
-    return list(result.scalars().all())
+    return list(result.scalars().all()), total
 
 
-async def list_poll_runs(session: AsyncSession, limit: int = 20) -> list[PollRun]:
+async def list_poll_runs(
+    session: AsyncSession, limit: int = 20, offset: int = 0
+) -> tuple[list[PollRun], int]:
+    total = (await session.execute(select(func.count()).select_from(PollRun))).scalar_one()
     result = await session.execute(
-        select(PollRun).order_by(PollRun.started_at.desc()).limit(limit)
+        select(PollRun).order_by(PollRun.started_at.desc()).limit(limit).offset(offset)
     )
-    return list(result.scalars().all())
+    return list(result.scalars().all()), total

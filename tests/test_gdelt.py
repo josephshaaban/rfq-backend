@@ -44,7 +44,7 @@ async def test_gdelt_creates_alert_events(db_session):
         await db_session.commit()
 
     from app.db.repositories.alert_repo import list_alert_events
-    alerts = await list_alert_events(db_session, limit=10)
+    alerts, _ = await list_alert_events(db_session, limit=10)
 
     assert len(alerts) >= 2
     urls = [a.article_url for a in alerts]
@@ -72,7 +72,7 @@ async def test_gdelt_deduplicates_on_second_run(db_session):
         await db_session.commit()
 
     from app.db.repositories.alert_repo import list_alert_events
-    alerts = await list_alert_events(db_session, limit=50)
+    alerts, _ = await list_alert_events(db_session, limit=50)
 
     # Unique URLs — the unique index on (source_name, article_url) prevents duplicates
     target_urls = {
@@ -113,8 +113,8 @@ async def test_gdelt_fixture_fallback_creates_alerts(db_session):
         await db_session.commit()
 
     from app.db.repositories.alert_repo import list_alert_events, list_poll_runs
-    alerts = await list_alert_events(db_session, limit=20)
-    runs = await list_poll_runs(db_session)
+    alerts, _ = await list_alert_events(db_session, limit=20)
+    runs, _ = await list_poll_runs(db_session)
 
     fixture_alerts = [a for a in alerts if a.source_name == "gdelt_fixture"]
     assert len(fixture_alerts) >= 5  # all 5 built-in fixtures inserted
