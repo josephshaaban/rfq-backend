@@ -68,6 +68,7 @@ class DocumentService:
     # This provides at-least-once delivery and a DLQ for failed extractions.
     async def _run_extraction(self, document_id: str, raw_text: str) -> None:
         """Runs in the background after the upload response is sent."""
+        logger.info("Extraction started", extra={"document_id": document_id})
         factory = get_session_factory()
         final_status = "failed"
         keyword_count = entity_count = 0

@@ -86,12 +86,12 @@ async def get_entities(
     entity_type: str | None = None,
     session: AsyncSession = Depends(get_session),
 ):
+    if entity_type is not None and entity_type not in VALID_ENTITY_TYPES:
+        raise InvalidEntityTypeError(entity_type, sorted(VALID_ENTITY_TYPES))
+
     doc = await document_repo.get_document_by_id(session, document_id)
     if not doc:
         raise DocumentNotFoundError(document_id)
-
-    if entity_type is not None and entity_type not in VALID_ENTITY_TYPES:
-        raise InvalidEntityTypeError(entity_type, sorted(VALID_ENTITY_TYPES))
 
     entities = await document_repo.get_entities_for_document(session, document_id, entity_type)
     return EntitiesListResponse(

@@ -103,10 +103,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(InvalidEntityTypeError)
     async def _invalid_entity_type(request: Request, exc: InvalidEntityTypeError) -> JSONResponse:
         return JSONResponse(
-            status_code=422,
+            status_code=400,
             content={"detail": _body(
                 f"Entity type '{exc.value}' is not valid",
-                "validation_error",
+                "invalid_entity_type",
                 field="entity_type",
                 allowed=exc.allowed,
             )},
