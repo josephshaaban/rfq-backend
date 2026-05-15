@@ -3,6 +3,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from app.settings import get_settings
+from app.middleware.correlation import request_id_var
 
 
 class JSONFormatter(logging.Formatter):
@@ -14,6 +15,7 @@ class JSONFormatter(logging.Formatter):
             "level": record.levelname,
             "logger": record.name,
             "msg": record.getMessage(),
+            "request_id": request_id_var.get(None),
         }
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)

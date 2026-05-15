@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.exceptions import register_exception_handlers
+from app.middleware.correlation import CorrelationIdMiddleware
 
 from app.logger import configure_logging, get_logger
 from app.settings import get_settings
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.add_middleware(CorrelationIdMiddleware)
     # Set CORS_ORIGINS env var (comma-separated) before any shared deployment.
     app.add_middleware(
         CORSMiddleware,
