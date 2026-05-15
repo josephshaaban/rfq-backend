@@ -1,4 +1,8 @@
 tests/
+docs/
+scripts/
+assets/input/
+.git/
 
 # Secrets — never commit
 .env
@@ -12,6 +16,7 @@ data/
 # Python
 __pycache__/
 *.py[cod]
+*.pyc
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
