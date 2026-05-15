@@ -3,6 +3,7 @@ from app.services.extraction_service import ExtractionService
 
 pytestmark = pytest.mark.asyncio
 
+# Mirrors the real manufacturing_rfq_sample.txt content — all seed keywords present
 RFQ_TEXT = """RFQ Reference: RFQ-2026-0417
 Issue Date: 2026-04-17
 Buyer: Northshore Industrial Systems Ltd.
@@ -11,12 +12,15 @@ Requested Delivery Date: 2026-06-20
 Currency: EUR
 Incoterm: DDP Bremen
 
-Material Grade: AISI 316L
+Stainless steel conveyor components — retrofit project.
+Material Grade: AISI 316L stainless steel
 Manufacturing Process: CNC milling and finishing
 Surface Finish: Ra 1.6 max
 Quantity: 1200 pieces
 Tolerance: +/- 0.10 mm on critical faces
 Certification Required: EN 10204 3.1 material certificate
+Lead time: 6 weeks from purchase order confirmation.
+DDP Bremen. Retrofit of existing conveyor line.
 """
 
 
@@ -28,7 +32,7 @@ async def test_rule_based_extracts_material(db_session):
     entity_values = [e["value"].upper() for e in entities]
 
     assert "material" in entity_types, "Should detect material entity"
-    assert any("316L" in v or "STAINLESS" in v for v in entity_values), "Should find AISI 316L"
+    assert any("316L" in v or "STAINLESS" in v for v in entity_values), "Should find AISI 316L or stainless steel"
 
 
 async def test_rule_based_extracts_incoterm(db_session):
@@ -61,9 +65,17 @@ async def test_rule_based_extracts_keywords(db_session):
     keywords, _ = service._extract_rule_based(RFQ_TEXT)
 
     kw_names = [k["keyword"] for k in keywords]
-    assert "stainless steel" in kw_names
-    assert "cnc" in kw_names
-    assert "tolerance" in kw_names
+    # All 10 seed keywords must appear in the RFQ text
+    assert "stainless steel" in kw_names, f"Expected 'stainless steel' in {kw_names}"
+    assert "cnc" in kw_names,             f"Expected 'cnc' in {kw_names}"
+    assert "tolerance" in kw_names,       f"Expected 'tolerance' in {kw_names}"
+    assert "316l" in kw_names,            f"Expected '316l' in {kw_names}"
+    assert "certificate" in kw_names,     f"Expected 'certificate' in {kw_names}"
+    assert "bremen" in kw_names,          f"Expected 'bremen' in {kw_names}"
+    assert "ddp" in kw_names,             f"Expected 'ddp' in {kw_names}"
+    assert "conveyor" in kw_names,        f"Expected 'conveyor' in {kw_names}"
+    assert "retrofit" in kw_names,        f"Expected 'retrofit' in {kw_names}"
+    assert "lead time" in kw_names,       f"Expected 'lead time' in {kw_names}"
 
 
 async def test_rule_based_extracts_process(db_session):
