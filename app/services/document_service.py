@@ -63,34 +63,37 @@ class DocumentService:
         background_tasks.add_task(self._run_extraction, document_id, raw_text)
         return document_id
 
+    # Production: replace BackgroundTasks with an SQS message publish.
+    # The extraction worker runs as a separate ECS service consuming from the queue.
+    # This provides at-least-once delivery and a DLQ for failed extractions.
     async def _run_extraction(self, document_id: str, raw_text: str) -> None:
         """Runs in the background after the upload response is sent."""
         factory = get_session_factory()
+        final_status = "failed"
+        keyword_count = entity_count = 0
         async with factory() as session:
             try:
                 service = ExtractionService(session)
                 keyword_count, entity_count = await service.extract_and_persist(document_id, raw_text)
-
-                await session.commit()
-                logger.info(
-                    "Extraction complete",
-                    extra={"document_id": document_id, "keywords": keyword_count, "entities": entity_count},
-                )
-
-                # Broadcast extraction_complete event to WebSocket clients
-                await manager.broadcast(
-                    "extraction_complete",
-                    {
-                        "document_id": document_id,
-                        "keyword_count": keyword_count,
-                        "entity_count": entity_count,
-                    },
-                    correlation_id=document_id,
-                )
-
-            except Exception as exc:
-                await session.rollback()
-                logger.exception("Extraction failed", extra={"document_id": document_id, "error": str(exc)})
-                async with factory() as err_session:
-                    await document_repo.update_document_status(err_session, document_id, "failed")
-                    await err_session.commit()
+                final_status = "processed"
+            except Exception:
+                logger.exception("Extraction failed", extra={"document_id": document_id})
+            finally:
+                try:
+                    await document_repo.update_document_status(session, document_id, final_status)
+                    await session.commit()
+                except Exception:
+                    logger.exception(
+                        "Failed to update document status",
+                        extra={"document_id": document_id, "target_status": final_status},
+                    )
+        if final_status == "processed":
+            await manager.broadcast(
+                "extraction_complete",
+                {
+                    "document_id": document_id,
+                    "keyword_count": keyword_count,
+                    "entity_count": entity_count,
+                },
+                correlation_id=document_id,
+            )
