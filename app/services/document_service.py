@@ -55,7 +55,7 @@ class DocumentService:
             created_at=datetime.now(timezone.utc).isoformat(),
         )
         await document_repo.create_document(self._session, doc)
-        logger.info("Document ingested", extra={"document_id": document_id, "filename": file.filename})
+        logger.info("Document ingested", extra={"document_id": document_id, "file_name": file.filename})
 
         # Queue extraction as a background task so we return 202 immediately
         background_tasks.add_task(self._run_extraction, document_id, raw_text)
