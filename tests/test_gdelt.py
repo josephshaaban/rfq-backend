@@ -99,6 +99,30 @@ async def test_gdelt_falls_back_to_fixtures_on_connect_error(db_session):
     assert len(articles) > 0
 
 
+async def test_gdelt_rate_limit_falls_back(db_session):
+    import httpx
+    from unittest.mock import MagicMock
+
+    monitor = GdeltMonitor()
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.headers = {}
+
+    with patch.object(
+        monitor,
+        "_fetch_gdelt",
+        new=AsyncMock(side_effect=httpx.HTTPStatusError(
+            "429 Too Many Requests",
+            request=MagicMock(),
+            response=mock_response,
+        )),
+    ):
+        articles, source = await monitor._fetch_with_fallback("manufacturing supply chain")
+
+    assert source == "gdelt_fixture"
+    assert len(articles) > 0
+
+
 async def test_gdelt_fixture_fallback_creates_alerts(db_session):
     """End-to-end: even when GDELT is unreachable, alerts are persisted and WS fires."""
     import httpx

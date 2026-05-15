@@ -1,3 +1,4 @@
+import asyncio
 import io
 import pytest
 from httpx import AsyncClient
@@ -120,3 +121,90 @@ async def test_list_poll_runs(client: AsyncClient):
     assert isinstance(data["runs"], list)
     assert "total_count" in data
     assert data["total_count"] >= 0
+
+
+async def test_health_db_reachable(client: AsyncClient):
+    response = await client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+async def _wait_for_processed(client: AsyncClient, doc_id: str, retries: int = 3) -> None:
+    for _ in range(retries):
+        await asyncio.sleep(0.5)
+        resp = await client.get(f"/api/v1/documents/{doc_id}")
+        if resp.json()["processing_status"] == "processed":
+            return
+
+
+async def test_get_keywords_has_content(client: AsyncClient):
+    upload = await client.post(
+        "/api/v1/documents",
+        files={"file": ("rfq_kw_content.txt", io.BytesIO(SAMPLE_RFQ + b" kw_content"), "text/plain")},
+    )
+    doc_id = upload.json()["document_id"]
+    await _wait_for_processed(client, doc_id)
+
+    response = await client.get(f"/api/v1/documents/{doc_id}/keywords")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] > 0
+    kw_set = {k["keyword"] for k in data["keywords"]}
+    assert kw_set & {"cnc", "tolerance", "316l", "ddp", "bremen"}
+
+
+async def test_get_entities_has_content(client: AsyncClient):
+    upload = await client.post(
+        "/api/v1/documents",
+        files={"file": ("rfq_ent_content.txt", io.BytesIO(SAMPLE_RFQ + b" ent_content"), "text/plain")},
+    )
+    doc_id = upload.json()["document_id"]
+    await _wait_for_processed(client, doc_id)
+
+    response = await client.get(f"/api/v1/documents/{doc_id}/entities")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] > 0
+    assert any(
+        e["entity_type"] == "incoterm" and e["entity_value"] == "DDP"
+        for e in data["entities"]
+    )
+
+
+async def test_get_entities_filter_by_type(client: AsyncClient):
+    upload = await client.post(
+        "/api/v1/documents",
+        files={"file": ("rfq_ent_filter.txt", io.BytesIO(SAMPLE_RFQ + b" ent_filter"), "text/plain")},
+    )
+    doc_id = upload.json()["document_id"]
+    await _wait_for_processed(client, doc_id)
+
+    response = await client.get(f"/api/v1/documents/{doc_id}/entities?entity_type=incoterm")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["entities"]) > 0
+    assert all(e["entity_type"] == "incoterm" for e in data["entities"])
+
+
+async def test_get_entities_invalid_type_400(client: AsyncClient):
+    response = await client.get("/api/v1/documents/any-doc-id/entities?entity_type=INVALID_TYPE")
+    assert response.status_code == 400
+    data = response.json()
+    assert data["detail"]["type"] == "invalid_entity_type"
+
+
+async def test_list_alerts_has_pagination_fields(client: AsyncClient):
+    response = await client.get("/api/v1/alerts")
+    assert response.status_code == 200
+    data = response.json()
+    assert "total_count" in data
+    assert "has_more" in data
+
+
+async def test_upload_too_large_413(client: AsyncClient):
+    large_content = b"x" * (11 * 1024 * 1024)
+    response = await client.post(
+        "/api/v1/documents",
+        files={"file": ("large.txt", io.BytesIO(large_content), "text/plain")},
+    )
+    assert response.status_code == 413
